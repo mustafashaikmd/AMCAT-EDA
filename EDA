@@ -1,0 +1,91 @@
+from google.colab import files
+uploaded = files.upload()
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy.stats import norm
+from scipy.stats import chi2_contingency
+df_data = pd.read_csv('data.csv')
+df_data.head()
+df_data.shape
+df_data.describe()
+df_data.columns
+df_data = df_data.drop(columns = ['Unnamed: 0'])
+df_data.head()
+df_data['DOL'].replace('present','2015-12-31', inplace = True)
+
+df_data['DOL'] = pd.to_datetime(df_data['DOL'])
+df_data['DOJ'] = pd.to_datetime(df_data['DOJ'])
+
+cat_variables = ['Designation','JobCity', 'Gender','10board','12board','CollegeTier','Degree','Specialization','CollegeCityTier','CollegeState']
+for categoryvar in cat_variables:
+  df_data[categoryvar]=df_data[categoryvar].astype('category')
+
+for column in df_data.select_dtypes(include=['category']).columns:
+  print(column)
+if (df_data[(df_data['DOL'] < df_data['DOJ'])].shape[0]):
+  df_data = df_data.drop(df_data[~(df_data['DOL'] > df_data['DOJ'])].index)
+
+df_data.shape
+
+print((df_data['10percentage']<=10).sum())
+print((df_data['12percentage']<=10).sum())
+print((df_data['collegeGPA']<=10).sum())
+
+df_data.loc[df_data['collegeGPA']<=10,'collegeGPA'].index
+
+for column in df_data.select_dtypes(include=np.number).columns:
+    plt.figure(figsize=(10, 6))
+    sns.histplot(df_data[column], kde=True, stat="density", linewidth=0)
+    plt.title(f'Distribution of {column}')
+    plt.xlabel(column)
+    plt.ylabel('Density')
+    plt.show()
+
+for column in df_data.select_dtypes(include=np.number).columns:
+    plt.figure(figsize=(10, 6))
+    sns.boxplot(x=df_data[column])
+    plt.title(f'Boxplot of {column}')
+    plt.show()
+
+for column in df_data.select_dtypes(include=['category']).columns:
+    plt.figure(figsize=(10, 6))
+    sns.countplot(y=df_data[column], order = df_data[column].value_counts().index)
+    plt.title(f'Frequency Distribution of {column}')
+    plt.show()
+
+for column1 in df_data.select_dtypes(include=np.number).columns:
+  for column2 in df_data.select_dtypes(include=np.number).columns:
+    if column1 != column2:
+      plt.figure(figsize=(10, 6))
+      sns.scatterplot(x=column1, y=column2, data=df_data)
+      plt.title('Scatter plot between ' +column1+ ' and ' +column2)
+      plt.show()
+
+sns.pairplot(df_data.select_dtypes(include=np.number))
+plt.show()
+
+designations = df_data['Designation'].value_counts().sort_index()
+pd.set_option('display.max_rows', None)
+print(designations)
+
+df_data['Designation'] = df_data['Designation'].replace(['programmer analyst trainee', 'programmer analyst'], 'programmer analyst')
+df_data['Designation'] = df_data['Designation'].replace(['software eng', 'software engg', 'software engineer', 'software engineere', 'software enginner'], 'software engineer')
+
+cse_jobs = df_data[(df_data['Designation'].isin(['programming analyst', 'software engineer', 'hardware engineer', 'associate engineer']) & 
+ (df_data['Specialization'].isin(['computer science & engineering','computer engineering'])))]
+average_salary = cse_jobs['Salary'].mean()
+print(f"The average salary for recently graduated is: {average_salary}")
+
+gender_specialization = pd.crosstab(df_data['Gender'], df_data['Specialization'])
+print(gender_specialization)
+
+sns.countplot(x='Specialization', hue='Gender', data=df_data)
+plt.xticks(rotation=90)
+plt.title('Gender Distribution Across Specializations')
+plt.show()
+
+chi2, p, dof, expected = chi2_contingency(gender_specialization)
+print(f"Chi-square test statistic: {chi2}")
+print(f"P-value: {p}")
